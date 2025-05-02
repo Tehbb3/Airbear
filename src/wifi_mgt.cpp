@@ -3,6 +3,7 @@
 #include "config.h"
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <esp_wifi.h>
 
 #include "lwip/api.h"
 #include "lwip/tcp.h"
@@ -40,6 +41,10 @@ void initWiFi()
       }
     }
   }
+  if( config.getUChar("connection_type") != CONNECTION_TYPE_BLE) { btStop(); }
+  WiFi.setTxPower(WIFI_POWER_8_5dBm);
+  esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+  
 
   // Set an mDNS name
   if (!MDNS.begin("speeduino")) { Serial.println("Error setting up MDNS responder!"); }

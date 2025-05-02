@@ -5,6 +5,7 @@
 
 //TCP Socket for direct connection to TunerStudio
 //extern AsyncClient TS_TCP_Client;
+#define ECU_SERIAL_TIMEOUT 3000
 
 //void handleData(void *arg, AsyncClient *client, void *data, size_t len);
 //void handleNewClient(void *arg, AsyncClient *client);

@@ -16,9 +16,20 @@ void handleData(void *arg, AsyncClient *client, void *data, size_t len)
   {
     Serial_ECU.write(((uint8_t *)data)[i]);
   }
+  Serial_ECU.flush(true);
 
   //Wait for response from ECU
-  while(Serial_ECU.available() < 1) { }
+  uint32_t startTime = millis();
+  Serial.printf("Start wait: %d \n", startTime);
+  while( (Serial_ECU.available() < 1) && ((millis() - startTime) < ECU_SERIAL_TIMEOUT) ) { }
+  //Check for timeout
+  if(Serial_ECU.available() == 0) 
+  {
+    Serial.println("Timeout waiting for response from ECU");
+    return; 
+  }
+
+  Serial.printf("End wait: %d \n", millis());
   //Serial.print("Response received from ECU: ");
   //Serial.println((char)Serial_ECU.peek());
 
