@@ -10,5 +10,6 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 void onConnect(AsyncEventSourceClient *client);
 void sendPing();
 void sendNoDataMessage();
+void sendSSEDebugMessage(String);
 
 #endif

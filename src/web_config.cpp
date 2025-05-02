@@ -1,6 +1,7 @@
 #include "web_config.h"
 #include "updater.h"
 #include "config.h"
+#include "logger.h"
 
 #include "static/static_html.h"
 #include "static/static_js.h"
@@ -90,6 +91,21 @@ String webConfigRequest(AsyncWebServerRequest *request)
   response += "<input type=\"submit\" accept=\".bin\" value=\"Upload\"/>";
   response += "</form>";
   response += "</p></div>";
+  //------------------------------------ Debug ------------------------------------
+  response += "<div id=\"content-4\">";
+  response += "<h2>Debug</h2><p>";
+  response += "<form action=\"" + String(UPDATE_REMOTE_URL) + "\" method=\"post\">";
+  response += "<select name=\"debug_level\" />";
+  response += "<option value=\"0\" " + (config.getUChar("debug_level") == LOG_LEVEL_OFF ? String("selected") : String("")) + ">Off</option>";
+  response += "<option value=\"1\" " + (config.getUChar("debug_level") == LOG_LEVEL_INFO ? String("selected") : String("")) + ">Info</option>";
+  response += "<option value=\"2\" " + (config.getUChar("debug_level") == LOG_LEVEL_WARN ? String("selected") : String("")) + ">Warn</option>";
+  response += "<option value=\"3\" " + (config.getUChar("debug_level") == LOG_LEVEL_ERROR ? String("selected") : String("")) + ">Error</option>";
+  response += "<option value=\"4\" " + (config.getUChar("debug_level") == LOG_LEVEL_FATAL ? String("selected") : String("")) + ">Fatal</option>";
+  response += "<input type=\"checkbox\" id=\"debug_serial\" "+ (config.getBool("debug_serial", false) ? String("checked") : String("")) + "/>Debug to Serial<br/>";
+  response += "<input type=\"checkbox\" id=\"debug_web\" "+ (config.getBool("debug_web", false) ? String("checked") : String("")) + "/>Debug to Web Dash<br/>";
+  response += "</select><br/>";
+  response += "</form>";
+  response += "</p></div>";
 
   response +="</div></div></body>";
 
@@ -121,6 +137,12 @@ String webConfigPOSTRequest(AsyncWebServerRequest *request)
     updateMessage = "Changing Connection Type: " + request->getParam("connection_type", true)->value();
     char c = request->getParam("connection_type", true)->value()[0];
     config.putUChar("connection_type", atoi(&c) );
+  }
+  if (request->hasParam("debug_level", true))
+  {
+    updateMessage = "Changing Debug Level: " + request->getParam("debug_level", true)->value();
+    char c = request->getParam("debug_level", true)->value()[0];
+    config.putUChar("debug_level", atoi(&c) );
   }
   Serial.println(updateMessage);
 

@@ -4,6 +4,12 @@
 // or at : https://skalman.github.io/UglifyJS-online/ (Copy uglifyjs.config.json into the editor)
 
 // **************** staticJS_updates() ****************
+const evtSource = new EventSource('/events');
+
+evtSource.addEventListener('debug', function(e) {
+  console.log('[Debug] ' + e.data);
+ }, false);
+
 function getElementByID(id)
 {
   return document.getElementById(id)

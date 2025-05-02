@@ -39,6 +39,13 @@ void sendNoDataMessage()
   events.send("nodata", "nodata", millis(), 0);
 }
 
+void sendSSEDebugMessage(String message)
+{
+  //Alert the client that there is no data being received from the ECU
+  events.send(message.c_str(), "debug", millis(), 0);
+  events.send("debug", message.c_str(), millis(), 0);
+}
+
 void onConnect(AsyncEventSourceClient *client) 
 {
   if(client->lastId())

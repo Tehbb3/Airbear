@@ -1,4 +1,5 @@
 #include "tcp-uart.h"
+#include "logger.h"
 #include <AsyncTCP.h>
 
 AsyncServer *TS_TCP_Server;
@@ -12,12 +13,15 @@ void handleData(void *arg, AsyncClient *client, void *data, size_t len)
   Serial.println("");
   TCPrequestsReceived++;
 
+  String query = "";
   for(int i = 0; i < len; i++)
   {
     Serial_ECU.write(((uint8_t *)data)[i]);
+    query += ((char *)data)[i];
   }
   Serial_ECU.flush(true);
 
+  debugMsg(String("Command received from client: ") + query, LOG_LEVEL_INFO);
   //Wait for response from ECU
   uint32_t startTime = millis();
   Serial.printf("Start wait: %d \n", startTime);
@@ -25,18 +29,19 @@ void handleData(void *arg, AsyncClient *client, void *data, size_t len)
   //Check for timeout
   if(Serial_ECU.available() == 0) 
   {
-    Serial.println("Timeout waiting for response from ECU");
+    debugMsg(String("Timeout waiting for response from ECU"), LOG_LEVEL_INFO);
     return; 
   }
 
   Serial.printf("End wait: %d \n", millis());
+  debugMsg(String("ECU response size: ") + Serial_ECU.available(), LOG_LEVEL_INFO);
   //Serial.print("Response received from ECU: ");
   //Serial.println((char)Serial_ECU.peek());
 
   //Read byte and see if it is the 'F' or 'Q' character for the first connection
   if( ((uint8_t *)data)[0] == 'F')
   {
-    //Serial.println("Received an F command");
+    debugMsg(String("Received an F command"), LOG_LEVEL_INFO);
 
     //Wait for 3 byte response
     while(Serial_ECU.available() < 3) { }
@@ -53,8 +58,8 @@ void handleData(void *arg, AsyncClient *client, void *data, size_t len)
   }
   else if( (((char *)data)[0] == 'Q') || (((char *)data)[0] == 'S'))
   {
-    //Serial.println("Received a Q or S command");
-
+    debugMsg(String("Received command: ") + ((char *)data)[0], LOG_LEVEL_INFO);
+    
     //Wait for 3 byte response
     delay(40);
     //char c[3];
@@ -64,12 +69,15 @@ void handleData(void *arg, AsyncClient *client, void *data, size_t len)
     if(client->space() >= Serial_ECU.available() )
     {
       //Serial.println("Sent reply");
+      String response = "";
       while(Serial_ECU.available())
       {
         char c = Serial_ECU.read();
         client->add(&c, 1);
+        response += c;
       }
       //client->add(c, 3);
+      debugMsg(String("Sent response: ") + response, LOG_LEVEL_INFO);
       client->send();
     }
   }
