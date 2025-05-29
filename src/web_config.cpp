@@ -39,6 +39,9 @@ String webConfigRequest(AsyncWebServerRequest *request)
   response += "<option value=\"1\" " + (config.getUChar("connection_type") == CONNECTION_TYPE_DASH ? String("selected") : String("")) + ">Web Dash</option>";
   response += "<option value=\"2\" " + (config.getUChar("connection_type") == CONNECTION_TYPE_BLE  ? String("selected") : String("")) + ">Bluetooth</option>";
   response += "<option value=\"3\" " + (config.getUChar("connection_type") == CONNECTION_TYPE_TUNERSTUDIO ? String("selected") : String("")) + ">TunerStudio (TCP)</option>";
+  response += "<option value='4'";
+  if(config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY) { response += " selected"; }
+  response += ">TFT Display</option>";
   response += "</select><br/>";
   response += "<input type=\"submit\" value=\"Save\"/>";
   response += "</form>";

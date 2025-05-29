@@ -27,6 +27,7 @@
 #define CONNECTION_TYPE_DASH        1
 #define CONNECTION_TYPE_BLE         2
 #define CONNECTION_TYPE_TUNERSTUDIO 3
+#define CONNECTION_TYPE_DISPLAY     4  // New mode for local display
 
 #define BLE_ID                    "Speeduino"
 

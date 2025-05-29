@@ -5,8 +5,9 @@
 
 uint16_t tempRPM = 0;
 uint8_t serialECURequestQueueSize = 0;
+boolean hasConnectionToECU = 0; // Have we spoken to the ECU succesfully at some point??
 
-//#define DEBUG_SERIAL_PARSER
+// #define DEBUG_SERIAL_PARSER
 
 void requestSerialData() 
 {
@@ -30,6 +31,8 @@ void parseFixedSerialData()
   if( (Serial_ECU.available() >= 75) && (Serial_ECU.read() == 'A') )
   {
     serialECURequestQueueSize--;
+    hasConnectionToECU = 1; // We got a response
+
     //Serial.println("Valid Data found");
     //readings_JSON = undefined;
 

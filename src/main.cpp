@@ -11,6 +11,7 @@
 #include "web_config.h"
 #include "wifi_mgt.h"
 #include "updater.h"
+#include "display.h"
 
 #include <soc/efuse_reg.h>
 #include <esp_efuse.h>
@@ -19,15 +20,36 @@
 
 uint32_t loopCounter = 0;
 
+uint32_t consecutiveECUFailures = 0;
+
+
 void setup() 
 {  
   pinMode(GPIO_NUM_8, INPUT_PULLDOWN);
   Serial.begin(115200);
-  Serial.setTxTimeoutMs(0);   // Workaround for https://github.com/espressif/arduino-esp32/issues/6983. Removing this will cause the loop to run VERY slowly unless the serial monitor is connected
+  Serial.setTxTimeoutMs(0);
+  
+  // Wait a moment for serial to connect
+  delay(1000);
+  Serial.println("\nAirBear Starting");
+  
   initConfig();
   initTimers();
+  
+  // Check if GPIO_NUM_8 is held high during boot to activate display test mode
+  bool testMode = digitalRead(GPIO_NUM_8);
+  
+  // Initialize display if in display mode
+  if(config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY) {
+    Serial.println("Display mode selected");
+    initDisplay();
+
+
+  }
+
   initBLE();
   initWiFi();
+
 
   delay(500);
   Serial.println("Connection Type: " + String(config.getUChar("connection_type")));
@@ -161,8 +183,7 @@ void setup()
 void loop() 
 {
   LOOP_TIMER = TIMER_mask;
-  
-  //delay(1000);
+
   loopCounter++;
 
   if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_30HZ)) //30 hertz
@@ -177,6 +198,25 @@ void loop()
       }
       if(serialECURequestQueueSize < 2) { requestSerialData(); }
       notifyClients();
+
+    }
+    else if(config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY)
+    {
+      if(Serial_ECU.available())
+      {
+        parseFixedSerialData();
+      }
+      if(serialECURequestQueueSize < 2) { requestSerialData(); }
+
+      if((serialECURequestQueueSize < 10) && (hasConnectionToECU == 1)) {
+        updateDisplay(); // Update the display with new data
+      }
+
+
+      // If we have spoken to ecu at some point, render guage
+      // if (hasHadConnectionToECU == 1 && serialECURequestQueueSize != 10) {
+      // }
+
     }
   }
 
@@ -203,19 +243,30 @@ void loop()
     
     if(Serial_ECU)
     {
-      if(config.getUChar("connection_type") == CONNECTION_TYPE_DASH)
+      if(config.getUChar("connection_type") == CONNECTION_TYPE_DASH || 
+         config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY)
       {
         sendPing();
         Serial.print("Notifications Sent: ");
         Serial.println(notificationsSent);
 
         if(serialECURequestQueueSize >= 2) { serialECURequestQueueSize++;} //Wait 1 additional second to allow ECU to timeout false data
-        if(serialECURequestQueueSize == 10)
-        {
+
+        // If queue is maxed out
+        if(serialECURequestQueueSize == 10) {
           //Not getting responses from ECU
-          sendNoDataMessage(); //Alert clients that no data is available
-          serialECURequestQueueSize = 0;
+          if(config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY) {
+            displayNoData(); // Show no data message on display
+          } else {
+            sendNoDataMessage(); //Alert clients that no data is available
+          }
+          serialECURequestQueueSize = 0; // Was 0, skip to one so that 0 can be a succesful loop
+
+          hasConnectionToECU = 0;
         }
+
+
+
       }
       else if(config.getUChar("connection_type") == CONNECTION_TYPE_TUNERSTUDIO)
       {
