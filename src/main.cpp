@@ -22,6 +22,8 @@ uint32_t loopCounter = 0;
 
 uint32_t consecutiveECUFailures = 0;
 
+// Add global variable to track last good data time
+unsigned long lastGoodDataTime = 0;
 
 void setup() 
 {  
@@ -30,7 +32,8 @@ void setup()
   Serial.setTxTimeoutMs(0);
   
   // Wait a moment for serial to connect
-  delay(1000);
+  // Doing this later to clear display quicker
+  // delay(1000);
   Serial.println("\nAirBear Starting");
   
   initConfig();
@@ -50,8 +53,9 @@ void setup()
   initBLE();
   initWiFi();
 
-
+  // Do we need this?
   delay(500);
+
   Serial.println("Connection Type: " + String(config.getUChar("connection_type")));
 
   if( (config.getUChar("connection_type") == CONNECTION_TYPE_TUNERSTUDIO) )
@@ -183,7 +187,6 @@ void setup()
 void loop() 
 {
   LOOP_TIMER = TIMER_mask;
-
   loopCounter++;
 
   if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_30HZ)) //30 hertz
@@ -198,25 +201,17 @@ void loop()
       }
       if(serialECURequestQueueSize < 2) { requestSerialData(); }
       notifyClients();
-
     }
-    else if(config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY)
-    {
+    else if(config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY) {
       if(Serial_ECU.available())
       {
         parseFixedSerialData();
+        lastGoodDataTime = millis(); // Update last good data time
       }
       if(serialECURequestQueueSize < 2) { requestSerialData(); }
 
-      if((serialECURequestQueueSize < 10) && (hasConnectionToECU == 1)) {
-        updateDisplay(); // Update the display with new data
-      }
-
-
-      // If we have spoken to ecu at some point, render guage
-      // if (hasHadConnectionToECU == 1 && serialECURequestQueueSize != 10) {
-      // }
-
+      // Always update the display at 30Hz
+      updateDisplay();
     }
   }
 
@@ -256,17 +251,16 @@ void loop()
         if(serialECURequestQueueSize == 10) {
           //Not getting responses from ECU
           if(config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY) {
-            displayNoData(); // Show no data message on display
+            // No direct call to displayNoData() - instead update the state
+            displayState.hasECUData = false;
+            displayState.refreshNeeded = true;
+            lastGoodDataTime = lastGoodDataTime == 0 ? millis() - 60000 : lastGoodDataTime; // Set initial value if not set
           } else {
             sendNoDataMessage(); //Alert clients that no data is available
           }
-          serialECURequestQueueSize = 0; // Was 0, skip to one so that 0 can be a succesful loop
-
+          serialECURequestQueueSize = 0; 
           hasConnectionToECU = 0;
         }
-
-
-
       }
       else if(config.getUChar("connection_type") == CONNECTION_TYPE_TUNERSTUDIO)
       {
@@ -282,5 +276,24 @@ void loop()
       Serial.println("No serial connection available. Retrying");
       Serial_ECU.begin(115200); 
     } //Retry serial connection
+  }
+  
+  // Handle button input for display mode
+  if(config.getUChar("connection_type") == CONNECTION_TYPE_DISPLAY) {
+    
+    // Example of cycling through screens with a button
+    static bool lastButtonState = true;
+    bool currentButtonState = digitalRead(GPIO_NUM_2);
+    
+    if (currentButtonState && !lastButtonState) {
+      // Button pressed - cycle screen
+      uint8_t nextScreen = (displayState.currentScreen + 1) % 7; // Cycle through first 6 screens
+      if (nextScreen == SCREEN_NOTIFICATION || nextScreen == SCREEN_NO_ECU_DATA)
+        nextScreen = (nextScreen + 1) % 7;
+        
+      setDisplayScreen(nextScreen);
+    }
+    
+    lastButtonState = currentButtonState;
   }
 }

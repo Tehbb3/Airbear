@@ -1,250 +1,229 @@
 #include "display.h"
 #include "globals.h"
+#include "display-routines.h"
+#include "serialParser.h"
 #include <ArduinoJson.h>
 #include <Arduino.h>
 
-Adafruit_SSD1306 display(DISPLAY_WIDTH, DISPLAY_HEIGHT, &Wire, OLED_RESET);
+// Define the LCD objects here so they can be accessed from other files
+Adafruit_SSD1306 lcd1(DISPLAY_WIDTH, DISPLAY_HEIGHT, &Wire, OLED_RESET);
+Adafruit_SSD1306 lcd2(DISPLAY_WIDTH, DISPLAY_HEIGHT, &Wire, OLED_RESET);
 
-
-// Initialize the display
-// Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_SDA, TFT_SCL, TFT_RST);
-// Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
+// Initialize display state - using standard C++ initialization instead of C99 designated initializers
+DisplayState displayState = {
+    SCREEN_SPLASH,      // currentScreen
+    SCREEN_MAIN,        // previousScreen
+    false,              // displayNotification
+    NOTIFICATION_INFO,  // notificationType
+    "",                 // notificationMessage
+    0,                  // notificationTimeout
+    false,              // hasECUData
+    true,               // refreshNeeded
+    true,               // animationEnabled
+    0                   // animationFrame
+};
 
 // Display state tracking
 bool displayInitialized = false;
-unsigned long lastDisplayUpdate = 0;
-const unsigned long DISPLAY_UPDATE_INTERVAL = 100; // Update display every 100ms
+unsigned long lastAnimationUpdate = 0;
+const unsigned long ANIMATION_INTERVAL = 100; // Update animations every 100ms
 
 void initDisplay() {
     Serial.println("Initializing display...");
 
     // Initialize IIC
-    Wire.begin(2,3);
+    Wire.begin(OLED_SDA, OLED_SCL);
 
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-        Serial.println(F("SSD1306 allocation failed"));
-        // for(;;); // Don't proceed, loop forever
+    if(!lcd1.begin(SSD1306_SWITCHCAPVCC, SCREEN_1_ADDRESS)) {
+        Serial.println(F("SSD1306 allocation failed LCD1"));
+    }
+    if(!lcd2.begin(SSD1306_SWITCHCAPVCC, SCREEN_2_ADDRESS)) {
+        Serial.println(F("SSD1306 allocation failed LCD2"));
     }
 
-    display.display();
-    // delay(500); // Pause for 2 seconds
+    lcd1.setRotation(2);
+    lcd2.setRotation(2);
 
     // Clear the buffer
-    display.clearDisplay();
+    lcd1.clearDisplay();
+    lcd2.clearDisplay();
 
-    // Draw a single pixel in white
-    // display.drawPixel(10, 10, SSD1306_WHITE);
+    // Flashbang to show display is working
+    lcd1.fillScreen(SSD1306_WHITE);
+    lcd2.fillScreen(SSD1306_WHITE);
+    lcd1.display();
+    lcd2.display();
+    delay(100);
+    
+    clearDisplays();
 
-    // Flashbang
-    display.fillScreen(SSD1306_WHITE);
-
-    // Show the display buffer on the screen. You MUST call display() after
-    // drawing commands to make them visible on screen!
-    display.display();
-  
-    // Display splash screen
-    displaySplashScreen();
-
+    lcd1.display();
+    lcd2.display();
+    
+    // Set initial state to splash screen
+    displayState.currentScreen = SCREEN_SPLASH;
+    displayState.refreshNeeded = true;
+    
+    // Trigger initial screen render
+    // updateDisplay();
+    
     displayInitialized = true;
     Serial.println("Display initialized successfully");
+    
+    // After 3 seconds, switch to the main screen
+    // delay(3000);
+    // setDisplayScreen(SCREEN_MAIN);
+
+    // Moving to main screen via the splash screen itself thru animation so that other stuff can start sooner
 }
 
-void clearDisplay() {
-    display.clearDisplay();
+void clearDisplays() {
+    lcd1.clearDisplay();
+    lcd2.clearDisplay();
 }
 
-void displaySplashScreen() {
-    clearDisplay();
-  
-    display.setTextSize(2); // Draw 2X-scale text
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println(F("Starting.."));
-    display.display();      // Show initial text
-
-    display.setCursor(4, 24);
-    display.setTextSize(1);
-    display.println(F("(Maybe)"));
-
-    display.display();
-
-
-  // Display product name
-//   tft.setCursor(30, 80);
-//   tft.println(PRODUCT_NAME);
-  
-//   // Display version
-//   tft.setTextSize(1);
-//   tft.setTextColor(ST77XX_WHITE);
-//   tft.setCursor(80, 120);
-//   tft.print("v");
-//   tft.println(FIRMWARE_VERSION);iiiiiii
-  
-//   // Display initialization message
-//   tft.setCursor(60, 160);
-//   tft.println("Initializing...");
-  
-//   delay(2000); // Show splash screen for 2 seconds
+void setDisplayScreen(uint8_t screenType) {
+    if (screenType >= SCREEN_COUNT) {
+        return;
+    }
+    
+    displayState.previousScreen = displayState.currentScreen;
+    displayState.currentScreen = screenType;
+    displayState.refreshNeeded = true;
+    
+    // Clear notifications when changing screens
+    if (displayState.displayNotification && screenType != SCREEN_NOTIFICATION) {
+        displayState.displayNotification = false;
+    }
 }
 
-void displayNoData() {
-    clearDisplay();
-  
-    display.setTextSize(2);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(24, 0);
-    display.println(F("NO DATA"));
-    display.setCursor(4, 24);
-    display.setTextSize(1);
-    display.println(F("CHECK ECU CONNECTION"));
-
-    display.display();
+void showNotification(uint8_t notificationType, const char* message, uint32_t timeout) {
+    // Save the current screen so we can return to it
+    if (displayState.currentScreen != SCREEN_NOTIFICATION) {
+        displayState.previousScreen = displayState.currentScreen;
+    }
+    
+    // Setup the notification
+    displayState.notificationType = notificationType;
+    strncpy(displayState.notificationMessage, message, sizeof(displayState.notificationMessage) - 1);
+    displayState.notificationTimeout = millis() + timeout;
+    displayState.displayNotification = true;
+    displayState.currentScreen = SCREEN_NOTIFICATION;
+    displayState.refreshNeeded = true;
 }
 
-void drawGauge(int x, int y, int radius, int value, int minValue, int maxValue, 
-              const char* label, const char* units, uint16_t gaugeColor) {
-  
-  // Normalize value within min/max range
-  value = constrain(value, minValue, maxValue);
-  int angle = map(value, minValue, maxValue, 45, 315);
-  
-  // Draw gauge background
-  display.fillCircle(x, y, radius, SSD1306_BLACK);
-  display.drawCircle(x, y, radius, SSD1306_WHITE);
-  
-  // Draw gauge label
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(x - (strlen(label) * 3), y - 15);
-  display.print(label);
-  
-  // Draw min/max values
-  display.setCursor(x - radius + 5, y + 5);
-  display.print(minValue);
-  display.setCursor(x + radius - 15, y + 5);
-  display.print(maxValue);
-  
-  // Draw value
-  display.setTextSize(2);
-  display.setCursor(x - 20, y + 20);
-  display.print(value);
-  display.setTextSize(1);
-  display.print(units);
-  
-  // Draw gauge needle
-  float radian = (angle - 90) * 0.0174533; // Convert to radians
-  int needleX = x + int(cos(radian) * (radius - 10));
-  int needleY = y + int(sin(radian) * (radius - 10));
-  display.drawLine(x, y, needleX, needleY, gaugeColor);
-  display.fillCircle(x, y, 5, gaugeColor);
+void clearNotification() {
+    displayState.displayNotification = false;
+    displayState.currentScreen = displayState.previousScreen;
+    displayState.refreshNeeded = true;
 }
 
 void updateDisplay() {
-//   // Limit update frequency to avoid excessive redrawing
-    if (millis() - lastDisplayUpdate < DISPLAY_UPDATE_INTERVAL) {
+    unsigned long currentMillis = millis();
+    
+    // Update animation frames at a fixed rate
+    if (currentMillis - lastAnimationUpdate >= ANIMATION_INTERVAL) {
+        lastAnimationUpdate = currentMillis;
+        displayState.animationFrame = (displayState.animationFrame + 1) % 60; // 60 animation frames (0-59)
+        displayState.refreshNeeded = true;
+    }
+    
+    // Check if notification timeout has expired
+    if (displayState.displayNotification && currentMillis > displayState.notificationTimeout) {
+        clearNotification();
+    }
+    
+    // Force refresh for animated screens
+    if (displayState.currentScreen == SCREEN_SPLASH || 
+        displayState.currentScreen == SCREEN_LOADING || 
+        displayState.currentScreen == SCREEN_NO_ECU_DATA) {
+        displayState.refreshNeeded = true;
+    }
+    
+    // Only update the display if something has changed
+    if (!displayState.refreshNeeded) {
         return;
-    }  
-    lastDisplayUpdate = millis();
-    
-    // Clear the display
-    clearDisplay();
-    
-    // Read values from the JSON object
-    int rpm = 0;
-    int coolant = 0;
-    int map = 0;
-    int afr = 0;
-    int afr_target = 0;
-    int tps = 0;
-    
-    
-    // Try to get the data from the readings_JSON object
-    if (readings_JSON.containsKey("rpm")) {
-        rpm = readings_JSON["rpm"];
-    } else { 
-        rpm = -255;
     }
     
-    if (readings_JSON.containsKey("CLT")) {
-        coolant = readings_JSON["CLT"];
-    } else {
-        coolant = -255;
+    // Clear display before drawing
+    clearDisplays();
+    
+    // Set hasECUData based on global connectivity status
+    displayState.hasECUData = (hasConnectionToECU == 1);
+    
+    // If no ECU data available, override with no data screen
+    uint8_t screenToRender = displayState.hasECUData ? 
+                             displayState.currentScreen : 
+                             SCREEN_NO_ECU_DATA;
+                             
+    // Exception: always show splash screen if that's the current screen
+    if (displayState.currentScreen == SCREEN_SPLASH) {
+        screenToRender = SCREEN_SPLASH;
     }
-
-    if (readings_JSON.containsKey("MAP")) {
-        map = readings_JSON["MAP"];
-    } else {
-        map = -255;
-    }
-
-    if (readings_JSON.containsKey("AFR1")) {
-        afr = readings_JSON["AFR1"];
-    } else { 
-        afr = -255;
-    }
-
-    if (readings_JSON.containsKey("afr_target")) {
-        afr_target = readings_JSON["afr_target"];
-    } else {
-        afr_target = -255;
-    }
-
-    if (readings_JSON.containsKey("TPS")) {
-        tps = readings_JSON["TPS"];
-    } else {
-        tps = -255;
-    }
-
-
-    // Serial.println(coolant);
-    // Serial.println(rpm);
-
-
-display.setTextSize(2);
-
-display.setTextSize(1);
-display.setCursor(0,0);
-display.print("RPM");
-display.setTextSize(2);
-display.setCursor(30,0);
-display.print(rpm);
-
-display.setTextSize(1);
-display.setCursor(0, 16);
-display.print("CTS");
-display.setTextSize(2);
-display.setCursor(30, 16);
-display.print(coolant);
-
-
-display.setTextSize(1);
-display.setCursor(0, 32);
-display.print("MAP");
-display.setTextSize(2);
-display.setCursor(30, 32);
-display.print(map);
-
-display.setTextSize(1);
-display.setCursor(0, 48);
-display.print("Fuel");
-display.setCursor(0, 56);
-display.print("Err");
-display.setTextSize(2);
-display.setCursor(30, 48);
-display.print(afr - afr_target);
-
-
-// TPS indicator
-display.drawRect(120, 0, 8, ((tps / 100) * 64), SSD1306_WHITE);
-
-
-display.display();
-
-
-//   // Draw RPM gauge in the top half
-//   drawGauge(120, 80, 70, rpm, 0, 8000, "RPM", "", SSD1306_WHITE);
-  
-//   // Draw coolant temperature gauge in the bottom half
-//   drawGauge(120, 180, 50, coolant, 0, 120, "COOLANT", "C", SSD1306_WHITE);
+    
+    // Render the appropriate screen
+    renderScreen(screenToRender);
+    
+    // Reset the refresh flag
+    displayState.refreshNeeded = false;
 }
+
+void renderScreen(uint8_t screenType) {
+    switch (screenType) {
+        case SCREEN_SPLASH:
+            renderSplashScreen();
+            break;
+            
+        case SCREEN_MAIN:
+            renderMainScreen();
+            break;
+
+        case SCREEN_GRAPH:
+            renderGraphScreen();
+            break;
+
+        case SCREEN_DIAGNOSTIC:
+            renderDiagnosticScreen();
+            break;
+            
+        case SCREEN_DIAGNOSTIC_2:
+            renderDiagnosticScreenTwo();
+            break;
+            
+        case SCREEN_ENGINE:
+            renderEngineScreen();
+            break;
+            
+        case SCREEN_TEMPS:
+            renderTemperaturesScreen();
+            break;
+            
+        case SCREEN_FUELING:
+            renderFuelingScreen();
+            break;
+            
+        case SCREEN_LOADING:
+            renderLoadingScreen();
+            break;
+            
+        case SCREEN_NOTIFICATION:
+            renderNotificationScreen();
+            break;
+            
+        case SCREEN_NO_ECU_DATA:
+            renderNoECUDataScreen();
+            break;
+            
+        case SCREEN_CUSTOM:
+            renderCustomScreen();
+            break;
+            
+        default:
+            // Default to main screen if invalid screen type
+            renderMainScreen();
+            break;
+    }
+}
+
+// ... (The rest of the file will be implemented in display-screens.cpp)

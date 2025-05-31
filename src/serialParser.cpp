@@ -89,13 +89,52 @@ void parseFixedSerialData()
     readings_JSON["test_outputs"] = Serial_ECU.read();
     readings_JSON["AFR2"] = Serial_ECU.read();
     readings_JSON["baro"] = Serial_ECU.read();
-    readings_JSON["AFR2"] = Serial_ECU.read();
 
     //CAN Status variables 1 to 16
     for(uint8_t i = 1; i <= 16; i++)
     {
       readings_JSON["CAN_Status_" + String(i)] = Serial_ECU.read() | (Serial_ECU.read() << 8);
     }
+
+    Serial_ECU.read(); // TPS RAW
+
+    readings_JSON["error_codes"] = Serial_ECU.read(); // getNextError() - 74
+    readings_JSON["launch_correction"] = Serial_ECU.read(); // currentStatus.launchCorrection
+
+    // Skip a few values
+    for(uint8_t i = 1; i <= 7; i++) {
+      Serial_ECU.read();
+    }
+
+
+    readings_JSON["engine_protect_status"] = Serial_ECU.read(); // engineProtectStatus - 83
+
+    Serial_ECU.read(); // 84
+    Serial_ECU.read(); // 85
+    Serial_ECU.read(); // 86
+    Serial_ECU.read(); // 87
+    Serial_ECU.read(); // 88
+    Serial_ECU.read(); // 89
+    readings_JSON["idle_duty"] = Serial_ECU.read(); // 90 idleDuty
+
+    Serial_ECU.read(); // 91
+    Serial_ECU.read(); // 92
+    Serial_ECU.read(); // 93
+    Serial_ECU.read(); // 94
+    Serial_ECU.read(); // 95
+    Serial_ECU.read(); // 96
+    Serial_ECU.read(); // 97
+    Serial_ECU.read(); // 98
+    Serial_ECU.read(); // 99
+    Serial_ECU.read(); // 100
+    Serial_ECU.read(); // 101
+
+    readings_JSON["current_gear"] = Serial_ECU.read(); // 102 - currentStatus.gear
+
+
+
+
+
 
     while(Serial_ECU.available())
     {
@@ -138,5 +177,13 @@ void initSerialData()
     readings_JSON["correction_wue"] = 0;
   
     readings_JSON["rpm"] = 0;
+
+
+    readings_JSON["error_codes"] = 0;
+    readings_JSON["launch_correction"] = 0;
+    readings_JSON["engine_protect_status"] = 0;
+    readings_JSON["idle_duty"] = 0;
+    readings_JSON["current_gear"] = 0;
+
 }
 
