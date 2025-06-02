@@ -189,9 +189,11 @@ void loop()
   LOOP_TIMER = TIMER_mask;
   loopCounter++;
 
-  if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_30HZ)) //30 hertz
+  // if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_30HZ)) //30 hertz
+  if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_15HZ)) //30 hertz
   {
-    BIT_CLEAR(TIMER_mask, BIT_TIMER_30HZ);
+    // BIT_CLEAR(TIMER_mask, BIT_TIMER_30HZ);
+    BIT_CLEAR(TIMER_mask, BIT_TIMER_15HZ);
 
     if(config.getUChar("connection_type") == CONNECTION_TYPE_DASH)
     {
@@ -287,9 +289,9 @@ void loop()
     
     if (currentButtonState && !lastButtonState) {
       // Button pressed - cycle screen
-      uint8_t nextScreen = (displayState.currentScreen + 1) % 7; // Cycle through first 6 screens
+      uint8_t nextScreen = (displayState.currentScreen + 1) % 8; // Cycle through first 6 screens
       if (nextScreen == SCREEN_NOTIFICATION || nextScreen == SCREEN_NO_ECU_DATA)
-        nextScreen = (nextScreen + 1) % 7;
+        nextScreen = (nextScreen + 1) % 8;
         
       setDisplayScreen(nextScreen);
     }

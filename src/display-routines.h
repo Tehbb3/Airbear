@@ -12,6 +12,7 @@ void drawTaskbarText(Adafruit_SSD1306 &lcd, const char* text);
 void renderSplashScreen();
 void renderMainScreen();
 void renderGraphScreen();
+void renderStatusScreen();
 void renderDiagnosticScreen();
 void renderDiagnosticScreenTwo();
 void renderEngineScreen();

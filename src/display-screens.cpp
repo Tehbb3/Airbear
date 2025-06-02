@@ -85,21 +85,62 @@ void renderMainScreen() {
     
 
         // Main parameters on display 1
-    lcd1.setTextSize(1);
     lcd1.setCursor(0, 0);
+    lcd1.setTextSize(1);
     lcd1.print("RPM");
     lcd1.setTextSize(3);
     lcd1.setCursor(30, 0);
     lcd1.print(rpm);
 
-    
-    
+    lcd1.setTextSize(1);
+    lcd1.setCursor(0, 16);
+    lcd1.print("FUEL");
+    lcd1.setCursor(0, 24);
+    lcd1.print("ERR");
+    lcd1.setTextSize(3);
+    lcd1.setCursor(30, 18);
+    lcd1.print((afr - afr_target) / 10.0, 2); // Convert to decimal
+
+
     // TPS indicator
-    lcd1.drawRect(120, 0, 8, ((tps / 100.0) * 64), SSD1306_WHITE);
-    
+    lcd1.fillRect(120, 0, 8, ((tps / 100.0) * 64 - 12), SSD1306_WHITE);
+
+
+
     // Display taskbar with current screen name
-    drawTaskbarText(lcd1, "MAIN");
-    
+    // drawTaskbarText(lcd1, "MAIN");
+    bool idleControlOn = getIntValueOrDefault("idle_control_on", 0);
+    bool softLimitOn = getIntValueOrDefault("soft_limit_on", 0);
+    bool hardLimitOn = getIntValueOrDefault("hard_limit_on", 0);
+    bool launchHard = getIntValueOrDefault("launch_hard", 0);
+    bool launchSoft = getIntValueOrDefault("launch_soft", 0);
+    bool syncStatus = getIntValueOrDefault("sync", 0);
+    int correctionWUE = getIntValueOrDefault("correction_wue", 0);
+
+    bool isCranking = getIntValueOrDefault("cranking", 0);
+
+    char wueBuffer[20]; // Buffer for storing WUE text
+    char * taskText = "MAIN";
+
+    if (idleControlOn == 1) taskText = "IDLE";
+
+    if (correctionWUE > 101) {
+        sprintf(wueBuffer, "WUE %d", correctionWUE);
+        taskText = wueBuffer;
+    }
+
+    if (softLimitOn == 1) taskText = "SOFT LIMIT";
+    if (hardLimitOn == 1) taskText = "HARD LIMIT";
+    if (launchSoft == 1) taskText = "LNCH SOFT";
+    if (launchHard == 1) taskText = "LNCH HARD";
+    if (syncStatus == 0) taskText = "NO SYNC";
+    if (isCranking == 1) taskText = "CRANKING";
+
+    drawTaskbarText(lcd1, taskText);
+
+
+
+
     lcd1.display();
     
     // Second display - additional data
@@ -112,12 +153,10 @@ void renderMainScreen() {
     
     lcd2.setTextSize(1);
     lcd2.setCursor(0, 16);
-    lcd2.print("FUEL");
-    lcd2.setCursor(0, 24);
-    lcd2.print("ERR");
+    lcd2.print("BattV: ");
     lcd2.setTextSize(2);
     lcd2.setCursor(30, 16);
-    lcd2.print((afr - afr_target) / 10.0, 1); // Convert to decimal
+    lcd2.print(getIntValueOrDefault("Battery_Voltage", 0) / 10.0, 1);
     
     // Add more parameters to display 2
     int iat = getIntValueOrDefault("IAT", 0);
@@ -157,6 +196,9 @@ void renderGraphScreen() {
     
 
     // Main parameters on display 1
+
+    lcd1.drawLine(0, 0, ((rpm / 6500) * 128), 0, SSD1306_WHITE);
+
     lcd1.setTextSize(1);
     lcd1.setCursor(0, 0);
     lcd1.print("RPM");
@@ -223,6 +265,70 @@ void renderGraphScreen() {
 
 
 
+// Render the main screen with key engine parameters
+void renderStatusScreen() {
+
+    // Display taskbar with screen name
+    drawTaskbarText(lcd1, "STATUS");
+
+    // First display - Engine and critical states
+    lcd1.setTextSize(1);
+    lcd1.setCursor(0, 0);
+    lcd1.println(F("ENGINE STATUS"));
+
+    // Get engine status bits
+    bool isRunning = getIntValueOrDefault("running", 0);
+    bool isCranking = getIntValueOrDefault("cranking", 0);
+    bool isWarmup = getIntValueOrDefault("warmup", 0);
+
+    // Draw engine status indicators
+    lcd1.setCursor(0, 12);
+    lcd1.print(F(""));
+    lcd1.print(isRunning ? F("Running") : F(""));
+
+    lcd1.setCursor(0, 22);
+    lcd1.print(F(""));
+    lcd1.print(isCranking ? F("Cranking") : F(""));
+
+    lcd1.setCursor(0, 32);
+    lcd1.print(F(""));
+    lcd1.print(isWarmup ? F("Warmup") : F(""));
+
+    // Get all spark bits
+    bool launchHard = getIntValueOrDefault("launch_hard", 0);
+    bool launchSoft = getIntValueOrDefault("launch_soft", 0);
+    bool hardLimitOn = getIntValueOrDefault("hard_limit_on", 0);
+    bool softLimitOn = getIntValueOrDefault("soft_limit_on", 0);
+    bool sparkError = getIntValueOrDefault("spark_error", 0);
+    bool idleControlOn = getIntValueOrDefault("idle_control_on", 0);
+    bool syncStatus = getIntValueOrDefault("sync", 0);
+
+    // Draw critical spark indicators
+    lcd1.setCursor(0, 48);
+    lcd1.print(F("SYNC: "));
+    lcd1.print(syncStatus ? F("OK") : F("LOST"));
+
+
+    lcd1.display();
+
+    // Second display - All spark bits in detail
+    lcd2.setTextSize(1);
+    lcd2.setCursor(0, 0);
+    lcd2.println(F("SPARK STATUS"));
+
+
+    if (syncStatus) lcd2.println(F("ECU Sync"));
+    if (sparkError) lcd2.println(F("Spark ERROR"));
+    if (launchHard) lcd2.println(F("Launch Hard"));
+    if (launchSoft) lcd2.println(F("Launch Soft"));
+    if (hardLimitOn) lcd2.println(F("HARD LIMIT"));
+    if (softLimitOn) lcd2.println(F("SOFT LIMIT"));
+    if (idleControlOn) lcd2.println(F("Idle Control ON"));
+
+    lcd2.display();
+
+
+}
 
 // Render diagnostic information screen
 void renderDiagnosticScreen() {
@@ -260,18 +366,18 @@ void renderDiagnosticScreen() {
     lcd2.println(serialECURequestQueueSize);
     
     lcd2.setCursor(0, 24);
-    lcd2.print(F("SSID: "));
-    lcd2.println(WiFi.SSID());
+    lcd2.print(F("TPS: "));
+    lcd2.println(getIntValueOrDefault("TPS", 0));
     
     lcd2.setCursor(0, 36);
-    lcd2.print(F("RSSI: "));
-    lcd2.print(WiFi.RSSI());
-    lcd2.println(F(" dBm"));
+    lcd2.print(F("Battery_Voltage: "));
+    lcd2.print(getIntValueOrDefault("Battery_Voltage", 0));
+    lcd2.println(F(""));
     
     lcd2.setCursor(0, 48);
     lcd2.print(F("UPTIME: "));
     lcd2.print(millis() / 1000 / 60); // Minutes
-    lcd2.println(F("m"));
+    lcd2.println(F(" min"));
     
     lcd2.display();
 }
@@ -304,7 +410,8 @@ void renderDiagnosticScreenTwo() {
     // Second display - system stats
     lcd2.setTextSize(1);
     lcd2.setCursor(0, 0);
-    lcd2.println(F("INFO"));
+    lcd2.println(F("correction_wue: "));
+    lcd2.print(getIntValueOrDefault("correction_wue", 0));
 
     lcd2.setCursor(0, 12);
     lcd2.print(F("Error Code: "));
@@ -746,15 +853,15 @@ void renderNoECUDataScreen() {
     // Second display - troubleshooting info
     lcd2.setTextSize(1);
     lcd2.setCursor(0, 0);
-    lcd2.println(F("No Connection"));
-    
-    lcd2.setCursor(0, 12);
-    lcd2.print(F("Serial Queue: "));
+    lcd2.println(F("Serial Queue: "));
+    lcd2.setTextSize(2);
     lcd2.println(serialECURequestQueueSize);
 
     
     lcd2.setCursor(0, 32);
+    lcd2.setTextSize(1);
     lcd2.println(F("Last good data: "));
+    lcd2.setTextSize(2);
     
     // Calculate time since last data
     unsigned long dataAge = 0;

@@ -165,6 +165,19 @@ void updateDisplay() {
     // Render the appropriate screen
     renderScreen(screenToRender);
     
+
+    // Invert screen if needed
+    bool hardLimitOn = getIntValueOrDefault("hard_limit_on", 0);
+    bool softLimitOn = getIntValueOrDefault("soft_limit_on", 0);
+    if (hardLimitOn == 1) {
+        lcd1.invertDisplay(1);
+        lcd2.invertDisplay(1);
+    } else {
+        if (softLimitOn == 1) {
+            lcd1.invertDisplay(1);
+        }
+    }
+
     // Reset the refresh flag
     displayState.refreshNeeded = false;
 }
@@ -181,6 +194,10 @@ void renderScreen(uint8_t screenType) {
 
         case SCREEN_GRAPH:
             renderGraphScreen();
+            break;
+
+        case SCREEN_STATUS:
+            renderStatusScreen();
             break;
 
         case SCREEN_DIAGNOSTIC:

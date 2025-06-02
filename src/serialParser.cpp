@@ -48,6 +48,8 @@ void parseFixedSerialData()
     
     uint8_t engine = Serial_ECU.read();
     readings_JSON["running"] = BIT_CHECK(engine, 0);
+    readings_JSON["cranking"] = BIT_CHECK(engine, 1);
+    readings_JSON["warmup"] = BIT_CHECK(engine, 2);
 
     readings_JSON["dwell"] = Serial_ECU.read() / 10.0;
     readings_JSON["MAP"] = Serial_ECU.read() | (Serial_ECU.read() << 8);
@@ -80,7 +82,21 @@ void parseFixedSerialData()
 
     readings_JSON["boost_target"] = Serial_ECU.read() * 2;
     readings_JSON["boost_duty"] = Serial_ECU.read();
-    readings_JSON["spark_bits"] = Serial_ECU.read();
+
+    uint8_t spark_bits = Serial_ECU.read();
+    readings_JSON["spark_bits"] = spark_bits;
+
+    readings_JSON["launch_hard"] = BIT_CHECK(spark_bits, 0);
+    readings_JSON["launch_soft"] = BIT_CHECK(spark_bits, 1);
+    readings_JSON["hard_limit_on"] = BIT_CHECK(spark_bits, 2);
+    readings_JSON["soft_limit_on"] = BIT_CHECK(spark_bits, 3);
+    // Boost cut spark
+    readings_JSON["spark_error"] = BIT_CHECK(spark_bits, 5);
+    readings_JSON["idle_control_on"] = BIT_CHECK(spark_bits, 6);
+    readings_JSON["sync"] = BIT_CHECK(spark_bits, 7);
+
+
+
     readings_JSON["rpmDOT"] = Serial_ECU.read() | (Serial_ECU.read() << 8);
     readings_JSON["ethanol%"] = Serial_ECU.read();
     readings_JSON["flex_correction"] = Serial_ECU.read();
@@ -101,35 +117,38 @@ void parseFixedSerialData()
     readings_JSON["error_codes"] = Serial_ECU.read(); // getNextError() - 74
     readings_JSON["launch_correction"] = Serial_ECU.read(); // currentStatus.launchCorrection
 
-    // Skip a few values
-    for(uint8_t i = 1; i <= 7; i++) {
-      Serial_ECU.read();
-    }
+    // A command only sends first 75 values
 
 
-    readings_JSON["engine_protect_status"] = Serial_ECU.read(); // engineProtectStatus - 83
+    // // Skip a few values
+    // for(uint8_t i = 1; i <= 7; i++) {
+    //   Serial_ECU.read();
+    // }
 
-    Serial_ECU.read(); // 84
-    Serial_ECU.read(); // 85
-    Serial_ECU.read(); // 86
-    Serial_ECU.read(); // 87
-    Serial_ECU.read(); // 88
-    Serial_ECU.read(); // 89
-    readings_JSON["idle_duty"] = Serial_ECU.read(); // 90 idleDuty
 
-    Serial_ECU.read(); // 91
-    Serial_ECU.read(); // 92
-    Serial_ECU.read(); // 93
-    Serial_ECU.read(); // 94
-    Serial_ECU.read(); // 95
-    Serial_ECU.read(); // 96
-    Serial_ECU.read(); // 97
-    Serial_ECU.read(); // 98
-    Serial_ECU.read(); // 99
-    Serial_ECU.read(); // 100
-    Serial_ECU.read(); // 101
+    // readings_JSON["engine_protect_status"] = Serial_ECU.read(); // engineProtectStatus - 83
 
-    readings_JSON["current_gear"] = Serial_ECU.read(); // 102 - currentStatus.gear
+    // Serial_ECU.read(); // 84
+    // Serial_ECU.read(); // 85
+    // Serial_ECU.read(); // 86
+    // Serial_ECU.read(); // 87
+    // Serial_ECU.read(); // 88
+    // Serial_ECU.read(); // 89
+    // readings_JSON["idle_duty"] = Serial_ECU.read(); // 90 idleDuty
+
+    // Serial_ECU.read(); // 91
+    // Serial_ECU.read(); // 92
+    // Serial_ECU.read(); // 93
+    // Serial_ECU.read(); // 94
+    // Serial_ECU.read(); // 95
+    // Serial_ECU.read(); // 96
+    // Serial_ECU.read(); // 97
+    // Serial_ECU.read(); // 98
+    // Serial_ECU.read(); // 99
+    // Serial_ECU.read(); // 100
+    // Serial_ECU.read(); // 101
+
+    // readings_JSON["current_gear"] = Serial_ECU.read(); // 102 - currentStatus.gear
 
 
 
@@ -161,6 +180,8 @@ void initSerialData()
     
     uint8_t engine =0;
     readings_JSON["running"] = BIT_CHECK(engine, 0);
+    readings_JSON["cranking"] = BIT_CHECK(engine, 1);
+    readings_JSON["warmup"] = BIT_CHECK(engine, 2);
 
     readings_JSON["dwell"] = 0;
     readings_JSON["MAP"] = 0;
@@ -177,6 +198,19 @@ void initSerialData()
     readings_JSON["correction_wue"] = 0;
   
     readings_JSON["rpm"] = 0;
+
+    uint8_t spark_bits = 0;
+    readings_JSON["spark_bits"] = spark_bits;
+
+    readings_JSON["launch_hard"] = BIT_CHECK(spark_bits, 0);
+    readings_JSON["launch_soft"] = BIT_CHECK(spark_bits, 1);
+    readings_JSON["hard_limit_on"] = BIT_CHECK(spark_bits, 2);
+    readings_JSON["soft_limit_on"] = BIT_CHECK(spark_bits, 3);
+    // Boost cut spark
+    readings_JSON["spark_error"] = BIT_CHECK(spark_bits, 5);
+    readings_JSON["idle_control_on"] = BIT_CHECK(spark_bits, 6);
+    readings_JSON["sync"] = BIT_CHECK(spark_bits, 7);
+
 
 
     readings_JSON["error_codes"] = 0;

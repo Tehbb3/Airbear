@@ -23,17 +23,18 @@
 // Screen types
 #define SCREEN_MAIN            0
 #define SCREEN_GRAPH           1
-#define SCREEN_DIAGNOSTIC      2
-#define SCREEN_DIAGNOSTIC_2    3
-#define SCREEN_ENGINE          4
-#define SCREEN_TEMPS           5
-#define SCREEN_FUELING         6
-#define SCREEN_LOADING         7
-#define SCREEN_NOTIFICATION    8
-#define SCREEN_NO_ECU_DATA     9
-#define SCREEN_SPLASH          10
-#define SCREEN_CUSTOM          11
-#define SCREEN_COUNT           12  // Total number of screens
+#define SCREEN_STATUS          2
+#define SCREEN_DIAGNOSTIC      3
+#define SCREEN_DIAGNOSTIC_2    4
+#define SCREEN_ENGINE          5
+#define SCREEN_TEMPS           6
+#define SCREEN_FUELING         7
+#define SCREEN_LOADING         8
+#define SCREEN_NOTIFICATION    9
+#define SCREEN_NO_ECU_DATA     10
+#define SCREEN_SPLASH          11
+#define SCREEN_CUSTOM          12
+#define SCREEN_COUNT           13  // Total number of screens
 
 // Notification types
 #define NOTIFICATION_INFO      0
