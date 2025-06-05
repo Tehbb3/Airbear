@@ -14,7 +14,7 @@ void requestSerialData()
   #ifdef DEBUG_SERIAL_PARSER
     Serial.println("Requesting Serial Data");
   #endif
-  Serial_ECU.write('A');
+  Serial_ECU.write('n');
   serialECURequestQueueSize++;
 }
 
@@ -28,13 +28,39 @@ void parseFixedSerialData()
   #endif
   
 
-  if( (Serial_ECU.available() >= 75) && (Serial_ECU.read() == 'A') )
+  if( (Serial_ECU.available() >= 75) && (Serial_ECU.read() == 'n') )
   {
+
+
+    #ifdef DEBUG_SERIAL_PARSER
+      Serial.println("Got Serial Data");
+    #endif
+
     serialECURequestQueueSize--;
     hasConnectionToECU = 1; // We got a response
 
     //Serial.println("Valid Data found");
     //readings_JSON = undefined;
+
+    Serial_ECU.read(); // Command type response - 0x32. Skip - Also 50 in dec
+    Serial_ECU.read(); // Response size - I think its minus the header bytes
+
+
+
+
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
 
     readings_JSON["secl"] = Serial_ECU.read();
 
@@ -115,45 +141,66 @@ void parseFixedSerialData()
     Serial_ECU.read(); // TPS RAW
 
     readings_JSON["error_codes"] = Serial_ECU.read(); // getNextError() - 74
-    readings_JSON["launch_correction"] = Serial_ECU.read(); // currentStatus.launchCorrection
+    readings_JSON["launch_correction"] = Serial_ECU.read(); // currentStatus.launchCorrection - 75
 
     // A command only sends first 75 values
+    // Use n Command:
+
+    Serial_ECU.read(); // 76 lowByte(currentStatus.PW2); break; //Pulsewidth 2 multiplied by 10 in ms. Have to convert from uS to mS.
+    Serial_ECU.read(); // 77 highByte(currentStatus.PW2); break; //Pulsewidth 2 multiplied by 10 in ms. Have to convert from uS to mS.
+    Serial_ECU.read(); // 78 lowByte(currentStatus.PW3); break; //Pulsewidth 3 multiplied by 10 in ms. Have to convert from uS to mS.
+    Serial_ECU.read(); // 79 highByte(currentStatus.PW3); break; //Pulsewidth 3 multiplied by 10 in ms. Have to convert from uS to mS.
+    Serial_ECU.read(); // 80 lowByte(currentStatus.PW4); break; //Pulsewidth 4 multiplied by 10 in ms. Have to convert from uS to mS.
+    Serial_ECU.read(); // 81 highByte(currentStatus.PW4); break; //Pulsewidth 4 multiplied by 10 in ms. Have to convert from uS to mS.
+    Serial_ECU.read(); // 82 currentStatus.status3; break; // resentLockOn(0), nitrousOn(1), fuel2Active(2), vssRefresh(3), halfSync(4), nSquirts(6:7)
+    readings_JSON["engine_protect_status"] = Serial_ECU.read(); // 83 currentStatus.engineProtectStatus; break; //RPM(0), MAP(1), OIL(2), AFR(3), Unused(4:7)
+    Serial_ECU.read(); // 84 lowByte(currentStatus.fuelLoad); break;
+    Serial_ECU.read(); // 85 highByte(currentStatus.fuelLoad); break;
+    Serial_ECU.read(); // 86 lowByte(currentStatus.ignLoad); break;
+    Serial_ECU.read(); // 87 highByte(currentStatus.ignLoad); break;
+    Serial_ECU.read(); // 88 lowByte(currentStatus.injAngle); break; 
+    Serial_ECU.read(); // 89 highByte(currentStatus.injAngle); break; 
+    Serial_ECU.read(); // 90 currentStatus.idleLoad; break; -- NOTE: this is literally the same function as the earlier idle load??
+    Serial_ECU.read(); // 91 currentStatus.CLIdleTarget; break; //closed loop idle target
+    Serial_ECU.read(); // 92 (uint8_t)(currentStatus.mapDOT / 10); break; //rate of change of the map 
+    readings_JSON["vvt1_angle"] = Serial_ECU.read(); // 93 (int8_t)currentStatus.vvt1Angle; break;
+    Serial_ECU.read(); // 94 currentStatus.vvt1TargetAngle; break;
+    Serial_ECU.read(); // 95 currentStatus.vvt1Duty; break;
+    Serial_ECU.read(); // 96 lowByte(currentStatus.flexBoostCorrection); break;
+    Serial_ECU.read(); // 97 highByte(currentStatus.flexBoostCorrection); break;
+    Serial_ECU.read(); // 98 currentStatus.baroCorrection; break;
+    Serial_ECU.read(); // 99 currentStatus.ASEValue; break; //Current ASE (%)
+
+    // Serial_ECU.read(); // 100 lowByte(currentStatus.vss); break; //speed reading from the speed sensor
+    // Serial_ECU.read(); // 101 highByte(currentStatus.vss); break;
+    readings_JSON["vss"] = Serial_ECU.read() | (Serial_ECU.read() << 8);
 
 
-    // // Skip a few values
-    // for(uint8_t i = 1; i <= 7; i++) {
-    //   Serial_ECU.read();
-    // }
-
-
-    // readings_JSON["engine_protect_status"] = Serial_ECU.read(); // engineProtectStatus - 83
-
-    // Serial_ECU.read(); // 84
-    // Serial_ECU.read(); // 85
-    // Serial_ECU.read(); // 86
-    // Serial_ECU.read(); // 87
-    // Serial_ECU.read(); // 88
-    // Serial_ECU.read(); // 89
-    // readings_JSON["idle_duty"] = Serial_ECU.read(); // 90 idleDuty
-
-    // Serial_ECU.read(); // 91
-    // Serial_ECU.read(); // 92
-    // Serial_ECU.read(); // 93
-    // Serial_ECU.read(); // 94
-    // Serial_ECU.read(); // 95
-    // Serial_ECU.read(); // 96
-    // Serial_ECU.read(); // 97
-    // Serial_ECU.read(); // 98
-    // Serial_ECU.read(); // 99
-    // Serial_ECU.read(); // 100
-    // Serial_ECU.read(); // 101
-
-    // readings_JSON["current_gear"] = Serial_ECU.read(); // 102 - currentStatus.gear
+    readings_JSON["current_gear"] = Serial_ECU.read(); // 102 currentStatus.gear; break; 
+    Serial_ECU.read(); // 103 currentStatus.fuelPressure; break;
+    Serial_ECU.read(); // 104 currentStatus.oilPressure; break;
+    Serial_ECU.read(); // 105 currentStatus.wmiPW; break;
+    Serial_ECU.read(); // 106 currentStatus.status4; break; // wmiEmptyBit(0), vvt1Error(1), vvt2Error(2), fanStatus(3), UnusedBits(4:7)
+    Serial_ECU.read(); // 107 (int8_t)currentStatus.vvt2Angle; break;
+    Serial_ECU.read(); // 108 currentStatus.vvt2TargetAngle; break;
+    Serial_ECU.read(); // 109 currentStatus.vvt2Duty; break;
+    Serial_ECU.read(); // 110 currentStatus.outputsStatus; break;
+    Serial_ECU.read(); // 111 (byte)(currentStatus.fuelTemp + CALIBRATION_TEMPERATURE_OFFSET); break; //Fuel temperature from flex sensor
+    Serial_ECU.read(); // 112 currentStatus.fuelTempCorrection; break; //Fuel temperature Correction (%)
+    Serial_ECU.read(); // 113 currentStatus.VE1; break; //VE 1 (%)
+    Serial_ECU.read(); // 114 currentStatus.VE2; break; //VE 2 (%)
+    Serial_ECU.read(); // 115 currentStatus.advance1; break; //advance 1 
+    Serial_ECU.read(); // 116 currentStatus.advance2; break; //advance 2 
+    Serial_ECU.read(); // 117 currentStatus.nitrous_status; break;
+    Serial_ECU.read(); // 118 currentStatus.TS_SD_Status; break; //SD card status
+    Serial_ECU.read(); // 119 lowByte(currentStatus.EMAP); break; //2 bytes for EMAP
+    Serial_ECU.read(); // 120 highByte(currentStatus.EMAP); break;
+    Serial_ECU.read(); // 121 currentStatus.fanDuty; break;
+    Serial_ECU.read(); // 122 currentStatus.airConStatus; break;
 
 
 
-
-
+    // Read whatever else there may be - Clear buffer
 
     while(Serial_ECU.available())
     {
@@ -211,13 +258,14 @@ void initSerialData()
     readings_JSON["idle_control_on"] = BIT_CHECK(spark_bits, 6);
     readings_JSON["sync"] = BIT_CHECK(spark_bits, 7);
 
-
+    
+    readings_JSON["current_gear"] = 0;
+    readings_JSON["vss"] = 0;
+    readings_JSON["vvt1_angle"] = 0;
 
     readings_JSON["error_codes"] = 0;
     readings_JSON["launch_correction"] = 0;
     readings_JSON["engine_protect_status"] = 0;
-    readings_JSON["idle_duty"] = 0;
-    readings_JSON["current_gear"] = 0;
 
 }
 

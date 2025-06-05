@@ -190,10 +190,11 @@ void loop()
   loopCounter++;
 
   // if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_30HZ)) //30 hertz
-  if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_15HZ)) //30 hertz
+  // if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_15HZ)) //30 hertz
+  if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_10HZ)) //30 hertz
   {
     // BIT_CLEAR(TIMER_mask, BIT_TIMER_30HZ);
-    BIT_CLEAR(TIMER_mask, BIT_TIMER_15HZ);
+    BIT_CLEAR(TIMER_mask, BIT_TIMER_10HZ);
 
     if(config.getUChar("connection_type") == CONNECTION_TYPE_DASH)
     {
@@ -213,9 +214,17 @@ void loop()
       if(serialECURequestQueueSize < 2) { requestSerialData(); }
 
       // Always update the display at 30Hz
-      updateDisplay();
+      // updateDisplay();
     }
   }
+
+  if(BIT_CHECK(LOOP_TIMER, BIT_TIMER_30HZ)) // Render fast as fuck boiii
+  {
+    // BIT_CLEAR(TIMER_mask, BIT_TIMER_30HZ);
+    BIT_CLEAR(TIMER_mask, BIT_TIMER_30HZ);
+    updateDisplay();
+  }
+
 
   if(config.getUChar("connection_type") == CONNECTION_TYPE_BLE)
   {
