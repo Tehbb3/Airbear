@@ -77,33 +77,45 @@ void renderSplashScreen() {
 void renderMainScreen() {
     // Read values from the JSON object
     int rpm = getIntValueOrDefault("rpm", 0);
+    int vss = getIntValueOrDefault("vss", 0);
     int coolant = getIntValueOrDefault("CLT", 0);
-    int map = getIntValueOrDefault("MAP", 0);
+    int manifold_pressure = getIntValueOrDefault("MAP", 0);
     int afr = getIntValueOrDefault("AFR1", 0);
     int afr_target = getIntValueOrDefault("afr_target", 0);
     int tps = getIntValueOrDefault("TPS", 0);
-    
+    int current_gear = getIntValueOrDefault("current_gear", 0);
+    int iat = getIntValueOrDefault("IAT", 0);
+    int spark = getIntValueOrDefault("adv_deg", 0);
+
 
         // Main parameters on display 1
     lcd1.setCursor(0, 0);
     lcd1.setTextSize(1);
+    lcd1.print("KPH");
+    lcd1.setTextSize(4);
+    lcd1.setCursor(24, 0);
+    lcd1.print(vss);
+
+    lcd1.setTextSize(1);
+    lcd1.setCursor(0, 34);
     lcd1.print("RPM");
-    lcd1.setTextSize(3);
-    lcd1.setCursor(30, 0);
+    lcd1.setTextSize(2);
+    lcd1.setCursor(24, 34);
     lcd1.print(rpm);
 
     lcd1.setTextSize(1);
-    lcd1.setCursor(0, 16);
-    lcd1.print("FUEL");
-    lcd1.setCursor(0, 24);
-    lcd1.print("ERR");
+    lcd1.setCursor(103, 16);
+    lcd1.print("Gear");
     lcd1.setTextSize(3);
-    lcd1.setCursor(30, 18);
-    lcd1.print((afr - afr_target) / 10.0, 2); // Convert to decimal
+    lcd1.setCursor(110, 26);
+    lcd1.print(current_gear);
+
+    
+
 
 
     // TPS indicator
-    lcd1.fillRect(120, 0, 8, ((tps / 100.0) * 64 - 12), SSD1306_WHITE);
+    lcd1.fillRect(120, 0, 8, ((tps / 255) * 64 - 12), SSD1306_WHITE);
 
 
 
@@ -144,38 +156,82 @@ void renderMainScreen() {
     lcd1.display();
     
     // Second display - additional data
-    lcd2.setTextSize(1);
-    lcd2.setCursor(0, 0);
-    lcd2.print("AFR");
-    lcd2.setTextSize(2);
-    lcd2.setCursor(30, 0);
-    lcd2.print(afr / 10.0, 1); // Convert to decimal
+
     
+    // lcd2.setTextSize(1);
+    // lcd2.setCursor(0, 16);
+    // lcd2.print("BattV: ");
+    // lcd2.setTextSize(2);
+    // lcd2.setCursor(30, 16);
+    // lcd2.print(getIntValueOrDefault("Battery_Voltage", 0) / 10.0, 1);
+
+
     lcd2.setTextSize(1);
-    lcd2.setCursor(0, 16);
-    lcd2.print("BattV: ");
-    lcd2.setTextSize(2);
-    lcd2.setCursor(30, 16);
-    lcd2.print(getIntValueOrDefault("Battery_Voltage", 0) / 10.0, 1);
+
+    // Coolant temp with bar
+    int coolantBarWidth = map(coolant, 0, 120, 0, 80);
+
+    lcd2.setCursor(0, 12);
+    lcd2.print("CTS");
+
+    lcd2.drawRect(20, 12, 80, 8, SSD1306_WHITE);
+    lcd2.fillRect(20, 12, coolantBarWidth, 8, coolant > 100 ? SSD1306_INVERSE : SSD1306_WHITE);
+    lcd2.setCursor(85+24, 12);
+    lcd2.print(coolant);
+    lcd2.print(F("c"));
+    
+    // IAT with bar
+    int iatBarWidth = map(iat, 0, 100, 0, 80);
+
+    lcd2.setCursor(0, 22);
+    lcd2.print("IAT");
+
+
+
+    lcd2.drawRect(20, 22, 80, 8, SSD1306_WHITE);
+    lcd2.fillRect(20, 22, iatBarWidth, 8, SSD1306_WHITE);
+    lcd2.setCursor(85+24, 22);
+    lcd2.print(iat);
+    lcd2.print(F("c"));
+    
     
     // Add more parameters to display 2
-    int iat = getIntValueOrDefault("IAT", 0);
-    int spark = getIntValueOrDefault("adv_deg", 0);
     
     lcd2.setTextSize(1);
-    lcd2.setCursor(0, 32);
-    lcd2.print("CTS");
+    lcd2.setCursor(0, 35);
+    lcd2.print("AFR");
+    lcd2.setCursor(0, 43);
+    lcd2.print("Err");
     lcd2.setTextSize(2);
-    lcd2.setCursor(30, 32);
-    lcd2.print(coolant);
+    lcd2.setCursor(30, 35);
+    lcd2.print((afr - afr_target));
+
+
+
+
+    
+    // lcd2.setTextSize(1);
+    // lcd2.setCursor(0, 48);
+    // lcd2.print("MAP");
+    // lcd2.setTextSize(2);
+    // lcd2.setCursor(30, 48);
+    // lcd2.print(manifold_pressure);
     
     lcd2.setTextSize(1);
-    lcd2.setCursor(0, 48);
+
+    // Coolant temp with bar
+    int MAPBarWidth = map(manifold_pressure, 10, 101, 0, 80);
+
+    lcd2.setCursor(0, 56);
     lcd2.print("MAP");
-    lcd2.setTextSize(2);
-    lcd2.setCursor(30, 48);
-    lcd2.print(map);
-    
+
+    lcd2.drawRect(20, 56, 80, 8, SSD1306_WHITE);
+    lcd2.fillRect(20, 56, MAPBarWidth, 8, coolant > 100 ? SSD1306_INVERSE : SSD1306_WHITE);
+    lcd2.setCursor(85+20, 56);
+    lcd2.print(manifold_pressure);
+    // lcd2.print(F("kpa"));
+
+
     lcd2.display();
 }
 
