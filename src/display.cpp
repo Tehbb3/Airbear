@@ -172,11 +172,19 @@ void updateDisplay() {
     if (hardLimitOn == 1) {
         lcd1.invertDisplay(1);
         lcd2.invertDisplay(1);
+        lcd1.display();
+        lcd2.display();
+        lcd1.invertDisplay(0);
+        lcd2.invertDisplay(0);
     } else {
         if (softLimitOn == 1) {
             lcd1.invertDisplay(1);
+            lcd1.display();
+            lcd1.invertDisplay(0);
         }
+
     }
+
 
     // Reset the refresh flag
     displayState.refreshNeeded = false;
